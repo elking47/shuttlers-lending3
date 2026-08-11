@@ -990,7 +990,26 @@ class LoanRepaymentSchedule(Document):
 				"Monthly as per repayment start date",
 				"Pro-rated calendar months",
 			):
-				days = date_diff(payment_date, add_months(payment_date, -1))
+				# Shuttlers Finance customization:
+				# Use 30/360 for standard monthly amortising schedules so that
+				# periodic interest is consistent with the EMI calculation
+				# (annual rate / 12). Keep Lending's existing Actual/365 logic
+				# for LOC, pro-rated periods, BPI, moratoriums and restructures.
+				if (
+					self.repayment_schedule_type
+					in (
+						"Monthly as per cycle date",
+						"Monthly as per repayment start date",
+					)
+					and not additional_days
+					and not self.restructure_type
+					and not self.moratorium_tenure
+				):
+					days = 30
+					months = 360
+				else:
+					days = date_diff(payment_date, add_months(payment_date, -1))
+
 				if (
 					additional_days < 0
 					or (additional_days > 0 and self.moratorium_tenure and not self.restructure_type)
